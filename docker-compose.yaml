@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - frontend
+    environment:
+      - FLASK_ENV=development
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    args:
+      - FLASK_ENDPOINT: ${FLASK_ENDPOINT} 
+    environment:
+      - FLASK_ENDPOINT=${FLASK_ENDPOINT} 
+    volumes:
+      - ./frontend:/app
