@@ -1,6 +1,6 @@
 import React from "react";
-import { Button, Form, Input, Tag } from "antd";
-import { notification, Space } from "antd";
+import { Button, Form, Input, Tag, notification } from "antd";
+import bg from "./assets/bg.jpg";
 
 const customizeRequiredMark = (label, { required }) => (
   <>
@@ -14,17 +14,22 @@ const customizeRequiredMark = (label, { required }) => (
 );
 
 const Detection = () => {
+  const [form] = Form.useForm();
   const [api, contextHolder] = notification.useNotification();
+
+  const apiUrl =
+    "http://localhost:5000/predict" || process.env.FLASK_ENDPOINT; ;
+
   const openNotificationWithIcon = (type, confidance) => {
-    // 'warning' , 'success'
     api[type]({
-      message: type === "warning" ? "Fraud Detected" : "Not a Detected",
+      message: type === "warning" ? "Fraud Detected" : "Not Fraud",
       description:
         type === "warning"
-          ? "Transcation is Fraud with " + confidance + " confidance"
-          : "Transcation is not Fraud with " + confidance + " confidance",
+          ? `Transaction is Fraud with ${confidance} confidence`
+          : `Transaction is not Fraud with ${confidance} confidence`,
     });
   };
+
   const Inputs = [
     "Time",
     "V1",
@@ -57,37 +62,77 @@ const Detection = () => {
     "V28",
     "Amount",
   ];
-  const [form] = Form.useForm();
-  const apiUrl =
-    `${process.env.FLASK_ENDPOING}/detection` ||
-    "http://localhost:5000/detection";
+
+  const onFinish = async (values) => {
+    try {
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values), 
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        const type = result.prediction === 1 ? "warning" : "success";
+        openNotificationWithIcon(type, 90); 
+      } else {
+        notification.error({
+          message: "Prediction Error",
+          description: result.error || "An error occurred",
+        });
+      }
+    } catch (error) {
+      notification.error({
+        message: "Request Failed",
+        description: "Could not reach the server.",
+      });
+    }
+  };
 
   return (
-    <Form
+    <div
       style={{
         height: "100vh",
         width: "50vw",
-        background: "rgba(0,255,0,0.05)",
-        overflow: "auto",
         padding: "20px",
+        overflow: "auto",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
       }}
-      action={apiUrl}
-      method="post"
-      form={form}
-      layout="vertical"
-      requiredMark={customizeRequiredMark}
     >
-      {Inputs.map((input) => (
-        <>
-          <Form.Item label={input} required tooltip="This is a required field">
+      <Form
+        form={form}
+        layout="vertical"
+        requiredMark={customizeRequiredMark}
+        onFinish={onFinish} 
+        style={{
+          height: "80%",
+          overflow: "auto",
+        }}
+      >
+        {Inputs.map((input) => (
+          <Form.Item
+            key={input}
+            label={input}
+            name={input} // Ensure name matches keys expected by the backend
+            required
+            tooltip="This is a required field"
+          >
             <Input placeholder={input} />
           </Form.Item>
-        </>
-      ))}
-      <Form.Item>
-        <Button type="primary">Submit</Button>
-      </Form.Item>
-    </Form>
+        ))}
+        <Form.Item>
+          <Button type="primary" htmlType="submit">
+            Submit
+          </Button>
+        </Form.Item>
+      </Form>
+      {contextHolder}
+    </div>
   );
 };
 
